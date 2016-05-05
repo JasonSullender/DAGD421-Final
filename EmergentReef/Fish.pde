@@ -5,35 +5,52 @@ public class Fish
   float neighborCount = 0;
   PVector location;
   PVector acceleration;
+  PVector Color;
   float r;
   float maxForce;
   float maxSpeed;
+  float maxSpeedRandom;
+  float sc;
+  float foo = 500;
+  float colorDifference = 30;
+  boolean avoidWalls=true;
 
-
-
-  Fish(PVector v)
+  Fish(PVector v, PVector n, float x, float rand)
   {
     acceleration = new PVector(0, 0);
 
     float angle = random(TWO_PI);
     vFish = new PVector(cos(angle), sin(angle), angle);
-
+    
+    Color = new PVector(n.x + random(-colorDifference, colorDifference), n.y + random(-colorDifference, colorDifference), n.z + random(-colorDifference, colorDifference));
+    
     location = new PVector(v.x, v.y, v.z);
     r = 2;
-    maxSpeed = 2;
+    sc = x;
+    
+    maxSpeedRandom = rand;
+    maxSpeed = (maxSpeedRandom * sc)/(1.5 * sc);
     maxForce = .3;
   }
   void swim(ArrayList<Fish> fishes)
   {
+    acceleration.add(PVector.mult(avoid(new PVector(location.x, foo, location.z), true), 5));
+    acceleration.add(PVector.mult(avoid(new PVector(location.x, -foo, location.z), true), 5));
+    acceleration.add(PVector.mult(avoid(new PVector(foo, location.y, location.z), true), 5));
+    acceleration.add(PVector.mult(avoid(new PVector(-foo, location.y, location.z), true), 5));
+    acceleration.add(PVector.mult(avoid(new PVector(location.x, location.y, foo), true), 5));
+    acceleration.add(PVector.mult(avoid(new PVector(location.x, location.y, -foo), true), 5));
     schoolfish(fishes);
     update();
-    borders();
+    borders(foo);
     render();
   }
+  
   void applyForce(PVector force)
   {
     acceleration.add(force);
   }
+  
   void schoolfish(ArrayList<Fish> fishes)
   {
     PVector sep=seperate(fishes);
@@ -48,6 +65,7 @@ public class Fish
     applyForce(ali);
     applyForce(coh);
   }
+  
   void update()
   {
     vFish.add(acceleration);
@@ -55,6 +73,7 @@ public class Fish
     location.add(vFish);
     acceleration.mult(0);
   }
+  
   PVector seek(PVector target)
   {
     PVector desired = PVector.sub(target, location);
@@ -64,33 +83,59 @@ public class Fish
     steer.limit(maxForce);
     return steer;
   }
-  void borders()
+  
+  PVector avoid(PVector target, boolean weight)
   {
-    if (location.x < -r) location.x = 100 + r;
-    if (location.y < -r) location.y = 100 + r;
-    if (location.z < -r) location.z = 400 + r;
-    if (location.x > 100 + r) location.x = -r;
-    if (location.y > 100 + r) location.y = -r;
-    if (location.z > 100 + r) location.z = -r;
+    PVector steer = new PVector();
+    steer.set(PVector.sub(location, target));
+    if(weight)
+    {
+      steer.mult(1/sq(PVector.dist(location, target)));
+      steer.limit(maxForce);
+    }
+    return steer;  
   }
+  
+  void borders(float s)
+  {
+    if (location.x < -s) { location.x = s; }
+    if (location.y < -s) { location.y = s; }
+    if (location.z < -s) { location.z = s; }
+    if (location.x > s) { location.x = -s; }
+    if (location.y > s) { location.y = -s; }
+    if (location.z > s) { location.z = -s; }
+  }
+  
   public void render()
   {
-    float theta = vFish.heading()+radians(90);
-    fill(random(0, 255), random(0, 255), random(0, 255));
-    stroke(255);
+    fill(this.Color.x, this.Color.y, this.Color.z);
+    noStroke();
     pushMatrix();
     translate(location.x, location.y, location.z);
-    rotate(theta);
+    rotateY(atan2(-vFish.z, vFish.x));
+    rotateZ(asin(vFish.y/vFish.mag()));
+    
     beginShape(TRIANGLES);
-    vertex(0, -r*2);
-    vertex(-r, r*2);
-    vertex(r, r*2);
+    
+    vertex(3*sc,0,0);
+    vertex(-3*sc,2*sc,0);
+    vertex(-3*sc,-2*sc,0);
+    
+    vertex(3*sc,0,0);
+    vertex(-3*sc,2*sc,0);
+    vertex(-3*sc,0,2*sc);
+    
+    vertex(-3*sc,0,2*sc);
+    vertex(-3*sc,2*sc,0);
+    vertex(-3*sc,-2*sc,0);
+    
     endShape();
     popMatrix();
   }
+  
   PVector seperate (ArrayList<Fish> fishes)
   {
-    float desiredseperation = 25;
+    float desiredseperation = 30;
     PVector steer = new PVector(0,0,0);
     int count = 0;
     for(Fish other:fishes)
@@ -118,6 +163,7 @@ public class Fish
     }
     return steer;
   }
+  
   PVector align(ArrayList<Fish> fishes)
   {
     float neighbors = 50;
@@ -148,7 +194,7 @@ public class Fish
   }
   
   PVector cohesion (ArrayList<Fish> fishes) {
-    float neighbordist = 50;
+    float neighbordist = 60;
     PVector sum = new PVector(0, 0);   // Start with empty vector to accumulate all locations
     int count = 0;
     for (Fish other : fishes) {
